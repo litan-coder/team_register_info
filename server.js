@@ -10,7 +10,7 @@ const ADMIN_PASSWORD = 'admin123';
 
 // ========== 数据库连接 ==========
 const pool = new Pool({
-  connectionString: 'postgresql://neondb_owner:npg_64xvCoVdEmwj@ep-shy-forest-aog32ggz-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
+  connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_64xvCoVdEmwj@ep-shy-forest-aog32ggz-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
   ssl: { rejectUnauthorized: false }
 });
 
@@ -30,8 +30,8 @@ async function initDB() {
         gender VARCHAR(10) NOT NULL,
         hobby VARCHAR(200) DEFAULT '',
         remark TEXT DEFAULT '',
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
     console.log('✅ 数据表 reg_team_info 已就绪');
@@ -130,7 +130,7 @@ app.post('/api/entries', authMiddleware, async (req, res) => {
     }
 
     const id = crypto.randomUUID();
-    const now = new Date();
+    const now = new Date().toISOString();
     await pool.query(
       `INSERT INTO reg_team_info (id, name, phone, age, gender, hobby, remark, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
@@ -206,7 +206,7 @@ app.put('/api/entries/:id', authMiddleware, async (req, res) => {
         gender || entry.gender,
         hobby !== undefined ? hobby : entry.hobby,
         remark !== undefined ? remark : entry.remark,
-        new Date(),
+        new Date().toISOString(),
         req.params.id
       ]
     );

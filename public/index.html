@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>团队信息登记</title>
+<style>
+  :root {
+    --primary: #4f6ef7;
+    --primary-dark: #3b5bdb;
+    --danger: #e74c3c;
+    --success: #27ae60;
+    --bg: #f0f2f5;
+    --card: #fff;
+    --text: #333;
+    --text-light: #888;
+    --border: #e0e0e0;
+    --radius: 10px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .container { max-width: 520px; margin: 0 auto; padding: 16px; }
+
+  /* ========== 顶部栏 ========== */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; margin-bottom: 16px;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header .user-info { font-size: 13px; color: var(--text-light); }
+  .header .logout-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 12px; font-size: 13px; color: var(--text-light); cursor: pointer;
+  }
+  .header .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ========== 卡片 ========== */
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-size: 15px; font-weight: 600; margin-bottom: 14px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  }
+
+  /* ========== 表单 ========== */
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 13px; font-weight: 500;
+    margin-bottom: 5px; color: #555;
+  }
+  .form-group label .required { color: var(--danger); margin-left: 2px; }
+  .form-group input, .form-group textarea, .form-group select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 15px; background: #fafafa;
+    transition: border-color .2s;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    outline: none; border-color: var(--primary); background: #fff;
+  }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+
+  .gender-group { display: flex; gap: 12px; }
+  .gender-option {
+    flex: 1; position: relative;
+  }
+  .gender-option input[type="radio"] {
+    position: absolute; opacity: 0; width: 0; height: 0;
+    -webkit-appearance: none; appearance: none;
+  }
+  .gender-option label {
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px; border: 1.5px solid var(--border); border-radius: 8px;
+    cursor: pointer; font-size: 15px; transition: all .2s;
+  }
+  .gender-option input:checked + label {
+    border-color: var(--primary); background: #f0f4ff; color: var(--primary); font-weight: 600;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 11px 20px; border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: all .2s; width: 100%;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:disabled { background: #b0bffa; cursor: not-allowed; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #c0392b; }
+  .btn-sm {
+    padding: 6px 14px; font-size: 13px; width: auto; font-weight: 500;
+  }
+  .btn-outline {
+    background: transparent; border: 1.5px solid var(--border); color: #666;
+  }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ========== 登录页 ========== */
+  .login-wrapper {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .login-box { width: 100%; max-width: 400px; }
+  .login-box h2 { text-align: center; font-size: 22px; margin-bottom: 6px; }
+  .login-box .subtitle { text-align: center; color: var(--text-light); font-size: 13px; margin-bottom: 24px; }
+  .login-tabs {
+    display: flex; margin-bottom: 20px; background: var(--bg);
+    border-radius: 8px; padding: 3px;
+  }
+  .login-tab {
+    flex: 1; padding: 9px; text-align: center; border-radius: 6px;
+    font-size: 14px; cursor: pointer; font-weight: 500; color: var(--text-light);
+    transition: all .2s;
+  }
+  .login-tab.active { background: #fff; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .login-form { display: none; }
+  .login-form.active { display: block; }
+
+  /* ========== 统计面板 ========== */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
+  }
+  .stat-item {
+    text-align: center; padding: 14px 8px; background: #f8f9fc; border-radius: 8px;
+  }
+  .stat-item .num { font-size: 26px; font-weight: 700; color: var(--primary); }
+  .stat-item .label { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
+  .stat-section { margin-bottom: 14px; }
+  .stat-section h4 { font-size: 13px; color: #666; margin-bottom: 8px; }
+  .bar-chart .bar-row {
+    display: flex; align-items: center; margin-bottom: 6px; font-size: 13px;
+  }
+  .bar-chart .bar-label { width: 60px; text-align: right; margin-right: 10px; color: #666; }
+  .bar-chart .bar-track { flex: 1; height: 22px; background: #f0f2f5; border-radius: 4px; overflow: hidden; }
+  .bar-chart .bar-fill { height: 100%; background: var(--primary); border-radius: 4px; min-width: 2px; transition: width .4s; }
+  .bar-chart .bar-value { width: 36px; text-align: right; margin-left: 8px; font-weight: 600; font-size: 13px; }
+
+  .hobby-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .hobby-tag {
+    padding: 5px 12px; background: #f0f4ff; color: var(--primary);
+    border-radius: 20px; font-size: 13px;
+  }
+  .hobby-tag .count { margin-left: 4px; font-weight: 700; }
+
+  /* ========== 条目列表 ========== */
+  .entry-item {
+    padding: 14px 0; border-bottom: 1px solid #f0f0f0;
+  }
+  .entry-item:last-child { border-bottom: none; }
+  .entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .entry-name { font-weight: 600; font-size: 15px; }
+  .entry-gender {
+    font-size: 12px; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+  }
+  .entry-gender.male { background: #e8f0fe; color: #1a73e8; }
+  .entry-gender.female { background: #fce4ec; color: #c62828; }
+  .entry-meta { font-size: 13px; color: var(--text-light); line-height: 1.8; }
+  .entry-meta span { margin-right: 14px; }
+  .entry-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+  /* ========== 空状态 ========== */
+  .empty { text-align: center; padding: 30px; color: var(--text-light); font-size: 14px; }
+  .empty .icon { font-size: 40px; margin-bottom: 8px; }
+
+  /* ========== Toast ========== */
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 10px 24px; border-radius: 8px;
+    font-size: 14px; z-index: 9999; opacity: 0; transition: opacity .3s;
+    pointer-events: none; max-width: 90%;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ========== 弹窗 ========== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: #fff; border-radius: var(--radius); padding: 24px;
+    width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal-box h3 { font-size: 17px; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions .btn { flex: 1; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat-item .num { font-size: 22px; }
+    .container { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- ========== 登录页 ========== -->
+<div id="loginPage" class="page active">
+  <div class="login-wrapper">
+    <div class="login-box">
+      <div class="card">
+        <h2>📋 团队信息登记</h2>
+        <p class="subtitle">请登录后进行登记操作</p>
+        <div class="login-tabs">
+          <div class="login-tab active" onclick="switchLoginTab('user')">用户登录</div>
+          <div class="login-tab" onclick="switchLoginTab('admin')">管理员</div>
+        </div>
+        <div id="userLoginForm" class="login-form active">
+          <div class="form-group">
+            <label>姓名 <span class="required">*</span></label>
+            <input type="text" id="loginName" placeholder="请输入您的姓名" maxlength="20">
+          </div>
+          <button type="button" class="btn btn-primary" onclick="loginAsUser()">进入登记</button>
+        </div>
+        <div id="adminLoginForm" class="login-form">
+          <div class="form-group">
+            <label>管理员密码 <span class="required">*</span></label>
+            <input type="password" id="loginPassword" placeholder="请输入管理员密码">
+          </div>
+          <button type="button" class="btn btn-primary" onclick="loginAsAdmin()">管理员登录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 用户主页 ========== -->
+<div id="userPage" class="page">
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>团队登记</h1>
+        <div class="user-info">👤 <span id="userName"></span></div>
+      </div>
+      <button class="logout-btn" onclick="logout()">退出</button>
+    </div>
+
+    <!-- 统计概览（用户只能看总数） -->
+    <div class="card">
+      <div class="card-title">📊 登记概况</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="num" id="userTotal">0</div>
+          <div class="label">总人数</div>
+        </div>
+        <div class="stat-item">
+          <div class="num" id="userMale">0</div>
+          <div class="label">男性</div>
+        </div>
+        <div class="stat-item">
+          <div class="num" id="userFemale">0</div>
+          <div class="label">女性</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 登记表单 -->
+    <div class="card">
+      <div class="card-title">📝 信息登记</div>
+      <form id="entryForm" onsubmit="submitEntry(event)">
+        <div class="form-group">
+          <label>年龄 <span class="required">*</span></label>
+          <input type="number" id="entryAge" placeholder="请输入年龄" min="1" max="150" required>
+        </div>
+        <div class="form-group">
+          <label>性别 <span class="required">*</span></label>
+          <div class="gender-group">
+            <div class="gender-option">
+              <input type="radio" name="gender" id="genderMale" value="男" required>
+              <label for="genderMale">♂ 男</label>
+            </div>
+            <div class="gender-option">
+              <input type="radio" name="gender" id="genderFemale" value="女">
+              <label for="genderFemale">♀ 女</label>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>爱好</label>
+          <input type="text" id="entryHobby" placeholder="如：篮球, 阅读, 编程" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <textarea id="entryRemark" placeholder="其他补充信息..." maxlength="500"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">提交登记</button>
+      </form>
+    </div>
+
+    <!-- 我的登记记录 -->
+    <div class="card">
+      <div class="card-title">📄 我的登记记录</div>
+      <div id="myEntriesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 管理员主页 ========== -->
+<div id="adminPage" class="page">
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>管理后台</h1>
+        <div class="user-info">🔑 管理员</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">退出</button>
+    </div>
+
+    <!-- 统计面板 -->
+    <div class="card">
+      <div class="card-title">📊 数据统计</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="num" id="adminTotal">0</div>
+          <div class="label">总人数</div>
+        </div>
+        <div class="stat-item">
+          <div class="num" id="adminMale">0</div>
+          <div class="label">男性</div>
+        </div>
+        <div class="stat-item">
+          <div class="num" id="adminFemale">0</div>
+          <div class="label">女性</div>
+        </div>
+      </div>
+
+      <div class="stat-section" id="ageSection">
+        <h4>📅 年龄分布</h4>
+        <div class="bar-chart" id="ageChart"></div>
+      </div>
+
+      <div class="stat-section" id="hobbySection">
+        <h4>🎯 爱好排行</h4>
+        <div class="hobby-tags" id="hobbyTags"></div>
+      </div>
+    </div>
+
+    <!-- 全部登记列表 -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        👥 全部登记记录
+        <button class="btn btn-sm btn-outline" onclick="exportExcel()" style="width:auto;">📥 导出 Excel</button>
+      </div>
+      <div id="allEntriesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 编辑弹窗 ========== -->
+<div id="editModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>✏️ 修改登记信息</h3>
+    <form id="editForm" onsubmit="submitEdit(event)">
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>年龄 <span class="required">*</span></label>
+        <input type="number" id="editAge" min="1" max="150" required>
+      </div>
+      <div class="form-group">
+        <label>性别 <span class="required">*</span></label>
+        <div class="gender-group">
+          <div class="gender-option">
+            <input type="radio" name="editGender" id="editGenderMale" value="男" required>
+            <label for="editGenderMale">♂ 男</label>
+          </div>
+          <div class="gender-option">
+            <input type="radio" name="editGender" id="editGenderFemale" value="女">
+            <label for="editGenderFemale">♀ 女</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>爱好</label>
+        <input type="text" id="editHobby" maxlength="100">
+      </div>
+      <div class="form-group">
+        <label>备注</label>
+        <textarea id="editRemark" maxlength="500"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeEditModal()">取消</button>
+        <button type="submit" class="btn btn-primary">保存修改</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const API = '';
+  let token = localStorage.getItem('auth_token') || '';
+  let role = localStorage.getItem('auth_role') || '';
+  let currentName = localStorage.getItem('auth_name') || '';
+
+  // ========== 工具函数 ==========
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  async function api(path, options = {}) {
+    var headers = { 'Content-Type': 'application/json' };
+    if (options.headers) {
+      for (var k in options.headers) headers[k] = options.headers[k];
+    }
+    if (token) headers['X-Auth-Token'] = token;
+    var res = await fetch(API + path, { method: options.method || 'GET', headers: headers, body: options.body });
+    var text = await res.text();
+    var data;
+    try { data = JSON.parse(text); } catch (e) { throw new Error('服务器响应异常'); }
+    if (!res.ok) throw new Error(data.error || '请求失败');
+    return data;
+  }
+
+  function showPage(pageId) {
+    var pages = document.getElementsByClassName('page');
+    for (var i = 0; i < pages.length; i++) {
+      pages[i].classList.remove('active');
+    }
+    document.getElementById(pageId).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ========== 登录相关 ==========
+  function switchLoginTab(type) {
+    var tabs = document.getElementsByClassName('login-tab');
+    var forms = document.getElementsByClassName('login-form');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+    for (var i = 0; i < forms.length; i++) forms[i].classList.remove('active');
+    if (type === 'user') {
+      tabs[0].classList.add('active');
+      document.getElementById('userLoginForm').classList.add('active');
+    } else {
+      tabs[1].classList.add('active');
+      document.getElementById('adminLoginForm').classList.add('active');
+    }
+  }
+
+  async function loginAsUser() {
+    var name = document.getElementById('loginName').value.trim();
+    if (!name) return showToast('请输入姓名');
+    try {
+      var data = await api('/api/login', {
+        method: 'POST', body: JSON.stringify({ name })
+      });
+      token = data.token; role = data.role; currentName = data.name;
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_role', role);
+      localStorage.setItem('auth_name', currentName);
+      initUserPage();
+    } catch (e) { showToast(e.message); }
+  }
+
+  async function loginAsAdmin() {
+    var password = document.getElementById('loginPassword').value;
+    if (!password) return showToast('请输入密码');
+    try {
+      var data = await api('/api/login', {
+        method: 'POST', body: JSON.stringify({ password })
+      });
+      token = data.token; role = data.role; currentName = data.name;
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_role', role);
+      localStorage.setItem('auth_name', currentName);
+      initAdminPage();
+    } catch (e) { showToast(e.message); }
+  }
+
+  async function logout() {
+    try { await api('/api/logout', { method: 'POST' }); } catch {}
+    token = ''; role = ''; currentName = '';
+    localStorage.clear();
+    showPage('loginPage');
+  }
+
+  // Enter 键提交
+  document.getElementById('loginName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) loginAsUser();
+  });
+  document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) loginAsAdmin();
+  });
+
+  // ========== 用户页面 ==========
+  async function initUserPage() {
+    showPage('userPage');
+    document.getElementById('userName').textContent = currentName;
+    loadUserStats();
+    loadMyEntries();
+  }
+
+  async function loadUserStats() {
+    try {
+      const data = await api('/api/stats');
+      document.getElementById('userTotal').textContent = data.total;
+      document.getElementById('userMale').textContent = data.maleCount;
+      document.getElementById('userFemale').textContent = data.femaleCount;
+    } catch {}
+  }
+
+  async function loadMyEntries() {
+    try {
+      const data = await api('/api/my-entries');
+      const list = document.getElementById('myEntriesList');
+      if (!data.entries.length) {
+        list.innerHTML = '<div class="empty"><div class="icon">📭</div>暂无登记记录</div>';
+        return;
+      }
+      list.innerHTML = data.entries.map(e => `
+        <div class="entry-item">
+          <div class="entry-header">
+            <span class="entry-name">${esc(e.name)}</span>
+            <span class="entry-gender ${e.gender === '男' ? 'male' : 'female'}">${e.gender === '男' ? '♂' : '♀'} ${e.gender}</span>
+          </div>
+          <div class="entry-meta">
+            <span>🎂 ${e.age}岁</span>
+            ${e.hobby ? `<span>🎯 ${esc(e.hobby)}</span>` : ''}
+          </div>
+          ${e.remark ? `<div class="entry-meta" style="margin-top:4px">💬 ${esc(e.remark)}</div>` : ''}
+          <div class="entry-actions">
+            <button class="btn btn-outline btn-sm" onclick='openEditModal(${JSON.stringify(e)})'>修改</button>
+            <button class="btn btn-sm" style="background:#fee;color:#e74c3c;" onclick="deleteEntry('${e.id}')">删除</button>
+          </div>
+        </div>
+      `).join('');
+    } catch {}
+  }
+
+  async function submitEntry(e) {
+    e.preventDefault();
+    var age = document.getElementById('entryAge').value;
+    var genderEl = document.querySelector('input[name="gender"]:checked');
+    var hobby = document.getElementById('entryHobby').value.trim();
+    var remark = document.getElementById('entryRemark').value.trim();
+    if (!age) return showToast('请填写年龄');
+    if (!genderEl) return showToast('请选择性别');
+    var gender = genderEl.value;
+    try {
+      await api('/api/entries', {
+        method: 'POST', body: JSON.stringify({ age: age, gender: gender, hobby: hobby, remark: remark })
+      });
+      showToast('登记成功！');
+      document.getElementById('entryForm').reset();
+      loadUserStats();
+      loadMyEntries();
+    } catch (e) { showToast(e.message); }
+  }
+
+  async function deleteEntry(id) {
+    if (!confirm('确定删除这条记录？')) return;
+    try {
+      await api(`/api/entries/${id}`, { method: 'DELETE' });
+      showToast('已删除');
+      loadUserStats();
+      loadMyEntries();
+    } catch (e) { showToast(e.message); }
+  }
+
+  // ========== 编辑弹窗 ==========
+  function openEditModal(entry) {
+    document.getElementById('editId').value = entry.id;
+    document.getElementById('editAge').value = entry.age;
+    document.getElementById('editHobby').value = entry.hobby || '';
+    document.getElementById('editRemark').value = entry.remark || '';
+    if (entry.gender === '男') document.getElementById('editGenderMale').checked = true;
+    else document.getElementById('editGenderFemale').checked = true;
+    document.getElementById('editModal').classList.add('show');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+  }
+
+  async function submitEdit(e) {
+    e.preventDefault();
+    var id = document.getElementById('editId').value;
+    var age = document.getElementById('editAge').value;
+    var genderEl = document.querySelector('input[name="editGender"]:checked');
+    var hobby = document.getElementById('editHobby').value.trim();
+    var remark = document.getElementById('editRemark').value.trim();
+    if (!genderEl) return showToast('请选择性别');
+    try {
+      await api('/api/entries/' + id, {
+        method: 'PUT', body: JSON.stringify({ age: age, gender: genderEl.value, hobby: hobby, remark: remark })
+      });
+      showToast('修改成功！');
+      closeEditModal();
+      loadMyEntries();
+      loadUserStats();
+    } catch (e) { showToast(e.message); }
+  }
+
+  // 点击遮罩关闭
+  document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal();
+  });
+
+  // ========== 管理员页面 ==========
+  async function initAdminPage() {
+    showPage('adminPage');
+    loadAdminStats();
+  }
+
+  async function loadAdminStats() {
+    try {
+      const data = await api('/api/stats');
+      document.getElementById('adminTotal').textContent = data.total;
+      document.getElementById('adminMale').textContent = data.maleCount;
+      document.getElementById('adminFemale').textContent = data.femaleCount;
+
+      // 年龄分布
+      const ageSection = document.getElementById('ageSection');
+      const ageChart = document.getElementById('ageChart');
+      if (data.total === 0) {
+        ageSection.style.display = 'none';
+      } else {
+        ageSection.style.display = 'block';
+        const maxAge = Math.max(...Object.values(data.ageGroups), 1);
+        ageChart.innerHTML = Object.entries(data.ageGroups).map(([label, count]) => `
+          <div class="bar-row">
+            <span class="bar-label">${label}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${(count/maxAge*100)}%"></div></div>
+            <span class="bar-value">${count}</span>
+          </div>
+        `).join('');
+      }
+
+      // 爱好排行
+      const hobbySection = document.getElementById('hobbySection');
+      const hobbyTags = document.getElementById('hobbyTags');
+      const hobbies = Object.entries(data.hobbies || {}).sort((a,b) => b[1]-a[1]);
+      if (!hobbies.length) {
+        hobbySection.style.display = 'none';
+      } else {
+        hobbySection.style.display = 'block';
+        hobbyTags.innerHTML = hobbies.map(([h, c]) =>
+          `<span class="hobby-tag">${esc(h)} <span class="count">×${c}</span></span>`
+        ).join('');
+      }
+
+      // 全部列表
+      const list = document.getElementById('allEntriesList');
+      if (!data.entries.length) {
+        list.innerHTML = '<div class="empty"><div class="icon">📭</div>暂无登记记录</div>';
+        return;
+      }
+      list.innerHTML = data.entries.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).map(e => `
+        <div class="entry-item">
+          <div class="entry-header">
+            <span class="entry-name">${esc(e.name)}</span>
+            <span class="entry-gender ${e.gender === '男' ? 'male' : 'female'}">${e.gender === '男' ? '♂' : '♀'} ${e.gender}</span>
+          </div>
+          <div class="entry-meta">
+            <span>🎂 ${e.age}岁</span>
+            ${e.hobby ? `<span>🎯 ${esc(e.hobby)}</span>` : ''}
+            <span>🕐 ${new Date(e.createdAt).toLocaleString('zh-CN')}</span>
+          </div>
+          ${e.remark ? `<div class="entry-meta" style="margin-top:4px">💬 ${esc(e.remark)}</div>` : ''}
+          <div class="entry-actions">
+            <button class="btn btn-sm" style="background:#fee;color:#e74c3c;" onclick="adminDelete('${e.id}')">删除</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) { showToast(e.message); }
+  }
+
+  async function adminDelete(id) {
+    if (!confirm('确定删除这条记录？')) return;
+    try {
+      await api(`/api/admin/entries/${id}`, { method: 'DELETE' });
+      showToast('已删除');
+      loadAdminStats();
+    } catch (e) { showToast(e.message); }
+  }
+
+  async function exportExcel() {
+    try {
+      const res = await fetch(API + '/api/export', {
+        headers: { 'X-Auth-Token': token }
+      });
+      if (!res.ok) throw new Error('导出失败');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '团队登记_' + new Date().toLocaleDateString('zh-CN') + '.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('导出成功');
+    } catch (e) { showToast(e.message); }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ========== 初始化 ==========
+  (function init() {
+    if (token) {
+      api('/api/stats').then(function() {
+        if (role === 'admin') initAdminPage();
+        else initUserPage();
+      }).catch(function() {
+        token = ''; role = ''; currentName = '';
+        localStorage.clear();
+        showPage('loginPage');
+      });
+    } else {
+      showPage('loginPage');
+    }
+  })();
+</script>
+</body>
+</html>

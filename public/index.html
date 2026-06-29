@@ -186,6 +186,7 @@
     pointer-events: none; max-width: 90%;
   }
   .toast.show { opacity: 1; }
+  .toast.error { background: #e74c3c; color: #fff; }
 
   /* ========== 弹窗 ========== */
   .modal-overlay {
@@ -297,6 +298,10 @@
           </div>
         </div>
         <div class="form-group">
+          <label>手机号 <span class="required">*</span></label>
+          <input type="tel" id="entryPhone" placeholder="请输入11位手机号" maxlength="11" pattern="1[3-9]\d{9}" required>
+        </div>
+        <div class="form-group">
           <label>爱好</label>
           <input type="text" id="entryHobby" placeholder="如：篮球, 阅读, 编程" maxlength="100">
         </div>
@@ -391,6 +396,10 @@
         </div>
       </div>
       <div class="form-group">
+        <label>手机号 <span class="required">*</span></label>
+        <input type="tel" id="editPhone" placeholder="请输入11位手机号" maxlength="11" pattern="1[3-9]\d{9}" required>
+      </div>
+      <div class="form-group">
         <label>爱好</label>
         <input type="text" id="editHobby" maxlength="100">
       </div>
@@ -413,11 +422,11 @@
   let currentName = localStorage.getItem('auth_name') || '';
 
   // ========== 工具函数 ==========
-  function showToast(msg) {
+  function showToast(msg, isError) {
     const t = document.getElementById('toast');
     t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => { t.className = 'toast'; }, 2000);
   }
 
   async function api(path, options = {}) {
@@ -460,7 +469,7 @@
 
   async function loginAsUser() {
     var name = document.getElementById('loginName').value.trim();
-    if (!name) return showToast('请输入姓名');
+    if (!name) return showToast('请输入姓名', true);
     try {
       var data = await api('/api/login', {
         method: 'POST', body: JSON.stringify({ name })
@@ -470,12 +479,12 @@
       localStorage.setItem('auth_role', role);
       localStorage.setItem('auth_name', currentName);
       initUserPage();
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   async function loginAsAdmin() {
     var password = document.getElementById('loginPassword').value;
-    if (!password) return showToast('请输入密码');
+    if (!password) return showToast('请输入密码', true);
     try {
       var data = await api('/api/login', {
         method: 'POST', body: JSON.stringify({ password })
@@ -485,7 +494,7 @@
       localStorage.setItem('auth_role', role);
       localStorage.setItem('auth_name', currentName);
       initAdminPage();
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   async function logout() {
@@ -535,6 +544,7 @@
             <span class="entry-gender ${e.gender === '男' ? 'male' : 'female'}">${e.gender === '男' ? '♂' : '♀'} ${e.gender}</span>
           </div>
           <div class="entry-meta">
+            <span>📱 ${esc(e.phone || '')}</span>
             <span>🎂 ${e.age}岁</span>
             ${e.hobby ? `<span>🎯 ${esc(e.hobby)}</span>` : ''}
           </div>
@@ -548,39 +558,47 @@
     } catch {}
   }
 
+  function isValidPhone(phone) {
+    return /^1[3-9]\d{9}$/.test(phone);
+  }
+
   async function submitEntry(e) {
     e.preventDefault();
+    var phone = document.getElementById('entryPhone').value.trim();
     var age = document.getElementById('entryAge').value;
     var genderEl = document.querySelector('input[name="gender"]:checked');
     var hobby = document.getElementById('entryHobby').value.trim();
     var remark = document.getElementById('entryRemark').value.trim();
-    if (!age) return showToast('请填写年龄');
-    if (!genderEl) return showToast('请选择性别');
+    if (!phone) return showToast('请输入手机号', true);
+    if (!isValidPhone(phone)) return showToast('请输入正确的11位手机号', true);
+    if (!age) return showToast('请填写年龄', true);
+    if (!genderEl) return showToast('请选择性别', true);
     var gender = genderEl.value;
     try {
       await api('/api/entries', {
-        method: 'POST', body: JSON.stringify({ age: age, gender: gender, hobby: hobby, remark: remark })
+        method: 'POST', body: JSON.stringify({ phone: phone, age: age, gender: gender, hobby: hobby, remark: remark })
       });
       showToast('登记成功！');
       document.getElementById('entryForm').reset();
       loadUserStats();
       loadMyEntries();
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   async function deleteEntry(id) {
     if (!confirm('确定删除这条记录？')) return;
     try {
       await api(`/api/entries/${id}`, { method: 'DELETE' });
-      showToast('已删除');
+      showToast('已删除', true);
       loadUserStats();
       loadMyEntries();
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   // ========== 编辑弹窗 ==========
   function openEditModal(entry) {
     document.getElementById('editId').value = entry.id;
+    document.getElementById('editPhone').value = entry.phone || '';
     document.getElementById('editAge').value = entry.age;
     document.getElementById('editHobby').value = entry.hobby || '';
     document.getElementById('editRemark').value = entry.remark || '';
@@ -596,20 +614,23 @@
   async function submitEdit(e) {
     e.preventDefault();
     var id = document.getElementById('editId').value;
+    var phone = document.getElementById('editPhone').value.trim();
     var age = document.getElementById('editAge').value;
     var genderEl = document.querySelector('input[name="editGender"]:checked');
     var hobby = document.getElementById('editHobby').value.trim();
     var remark = document.getElementById('editRemark').value.trim();
-    if (!genderEl) return showToast('请选择性别');
+    if (!phone) return showToast('请输入手机号', true);
+    if (!isValidPhone(phone)) return showToast('请输入正确的11位手机号', true);
+    if (!genderEl) return showToast('请选择性别', true);
     try {
       await api('/api/entries/' + id, {
-        method: 'PUT', body: JSON.stringify({ age: age, gender: genderEl.value, hobby: hobby, remark: remark })
+        method: 'PUT', body: JSON.stringify({ phone: phone, age: age, gender: genderEl.value, hobby: hobby, remark: remark })
       });
       showToast('修改成功！');
       closeEditModal();
       loadMyEntries();
       loadUserStats();
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   // 点击遮罩关闭
@@ -673,6 +694,7 @@
             <span class="entry-gender ${e.gender === '男' ? 'male' : 'female'}">${e.gender === '男' ? '♂' : '♀'} ${e.gender}</span>
           </div>
           <div class="entry-meta">
+            <span>📱 ${esc(e.phone || '')}</span>
             <span>🎂 ${e.age}岁</span>
             ${e.hobby ? `<span>🎯 ${esc(e.hobby)}</span>` : ''}
             <span>🕐 ${new Date(e.createdAt).toLocaleString('zh-CN')}</span>
@@ -683,16 +705,16 @@
           </div>
         </div>
       `).join('');
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   async function adminDelete(id) {
     if (!confirm('确定删除这条记录？')) return;
     try {
       await api(`/api/admin/entries/${id}`, { method: 'DELETE' });
-      showToast('已删除');
+      showToast('已删除', true);
       loadAdminStats();
-    } catch (e) { showToast(e.message); }
+    } catch (e) { showToast(e.message, true); }
   }
 
   async function exportExcel() {
@@ -709,8 +731,7 @@
       a.click();
       URL.revokeObjectURL(url);
       showToast('导出成功');
-    } catch (e) { showToast(e.message); }
-  }
+    } catch (e) { showToast(e.message, true); }  }
 
   function esc(s) {
     const d = document.createElement('div');

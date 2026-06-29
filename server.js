@@ -25,6 +25,7 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS reg_team_info (
         id VARCHAR(64) PRIMARY KEY,
         name VARCHAR(50) NOT NULL,
+        phone VARCHAR(20) DEFAULT '',
         age INTEGER NOT NULL,
         gender VARCHAR(10) NOT NULL,
         hobby VARCHAR(200) DEFAULT '',
@@ -39,9 +40,9 @@ async function initDB() {
     const result = await client.query('SELECT COUNT(*) FROM reg_team_info');
     if (parseInt(result.rows[0].count) === 0) {
       await client.query(`
-        INSERT INTO reg_team_info (id, name, age, gender, hobby, remark)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [crypto.randomUUID(), '测试用户', 28, '男', '篮球, 阅读', '这是一条测试数据']);
+        INSERT INTO reg_team_info (id, name, phone, age, gender, hobby, remark)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [crypto.randomUUID(), '测试用户', '13800000000', 28, '男', '篮球, 阅读', '这是一条测试数据']);
       console.log('✅ 已插入测试数据');
     }
   } catch (err) {
@@ -97,6 +98,12 @@ app.post('/api/logout', authMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+// ========== 手机号格式校验 ==========
+const PHONE_REGEX = /^1[3-9]\d{9}$/;
+function isValidPhone(phone) {
+  return PHONE_REGEX.test(phone);
+}
+
 // ========== 用户：新增登记 ==========
 app.post('/api/entries', authMiddleware, async (req, res) => {
   const { role, name } = req.session;
@@ -104,20 +111,32 @@ app.post('/api/entries', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: '管理员无需登记' });
   }
 
-  const { age, gender, hobby, remark } = req.body;
-  if (!age || !gender) {
-    return res.status(400).json({ error: '年龄和性别为必填项' });
+  const { phone, age, gender, hobby, remark } = req.body;
+  if (!phone || !age || !gender) {
+    return res.status(400).json({ error: '手机号、年龄和性别为必填项' });
+  }
+  if (!isValidPhone(phone)) {
+    return res.status(400).json({ error: '请输入正确的11位手机号' });
   }
 
   try {
+    // 检查姓名+手机号是否重复
+    const dup = await pool.query(
+      'SELECT id FROM reg_team_info WHERE name = $1 AND phone = $2',
+      [name, phone]
+    );
+    if (dup.rows.length > 0) {
+      return res.status(400).json({ error: '该姓名下已存在相同手机号，不允许重复提交！' });
+    }
+
     const id = crypto.randomUUID();
     const now = new Date();
     await pool.query(
-      `INSERT INTO reg_team_info (id, name, age, gender, hobby, remark, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [id, name, Number(age), gender, hobby || '', remark || '', now, now]
+      `INSERT INTO reg_team_info (id, name, phone, age, gender, hobby, remark, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [id, name, phone, Number(age), gender, hobby || '', remark || '', now, now]
     );
-    res.json({ ok: true, entry: { id, name, age: Number(age), gender, hobby: hobby || '', remark: remark || '', createdAt: now, updatedAt: now } });
+    res.json({ ok: true, entry: { id, name, phone, age: Number(age), gender, hobby: hobby || '', remark: remark || '', createdAt: now, updatedAt: now } });
   } catch (err) {
     res.status(500).json({ error: '服务器错误' });
   }
@@ -149,7 +168,13 @@ app.put('/api/entries/:id', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: '管理员无需修改' });
   }
 
-  const { age, gender, hobby, remark } = req.body;
+  const { phone, age, gender, hobby, remark } = req.body;
+
+  // 如果提供了手机号，校验格式
+  if (phone && !isValidPhone(phone)) {
+    return res.status(400).json({ error: '请输入正确的11位手机号' });
+  }
+
   try {
     const result = await pool.query(
       'SELECT * FROM reg_team_info WHERE id = $1 AND name = $2',
@@ -160,10 +185,23 @@ app.put('/api/entries/:id', authMiddleware, async (req, res) => {
     }
 
     const entry = result.rows[0];
+
+    // 如果修改了手机号，检查姓名+手机号是否与其他记录重复
+    if (phone && phone !== entry.phone) {
+      const dup = await pool.query(
+        'SELECT id FROM reg_team_info WHERE name = $1 AND phone = $2 AND id != $3',
+        [name, phone, req.params.id]
+      );
+      if (dup.rows.length > 0) {
+        return res.status(400).json({ error: '该姓名下已存在相同手机号，不允许重复提交！' });
+      }
+    }
+
     const updated = await pool.query(
-      `UPDATE reg_team_info SET age = $1, gender = $2, hobby = $3, remark = $4, updated_at = $5
-       WHERE id = $6 RETURNING *`,
+      `UPDATE reg_team_info SET phone = $1, age = $2, gender = $3, hobby = $4, remark = $5, updated_at = $6
+       WHERE id = $7 RETURNING *`,
       [
+        phone || entry.phone,
         age ? Number(age) : entry.age,
         gender || entry.gender,
         hobby !== undefined ? hobby : entry.hobby,
@@ -296,6 +334,7 @@ app.get('/api/export', authMiddleware, async (req, res) => {
     sheet.columns = [
       { header: '序号', key: 'index', width: 8 },
       { header: '姓名', key: 'name', width: 14 },
+      { header: '手机号', key: 'phone', width: 16 },
       { header: '年龄', key: 'age', width: 8 },
       { header: '性别', key: 'gender', width: 8 },
       { header: '爱好', key: 'hobby', width: 24 },
@@ -318,6 +357,7 @@ app.get('/api/export', authMiddleware, async (req, res) => {
       const row = sheet.addRow({
         index: i + 1,
         name: e.name,
+        phone: e.phone,
         age: e.age,
         gender: e.gender,
         hobby: e.hobby,
@@ -351,6 +391,7 @@ function formatEntry(row) {
   return {
     id: row.id,
     name: row.name,
+    phone: row.phone,
     age: row.age,
     gender: row.gender,
     hobby: row.hobby,
